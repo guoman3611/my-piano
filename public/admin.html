@@ -4,7 +4,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>钢琴学校 - 网站后台管理</title>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
     body { background-color: #f4f6f8; margin: 0; padding: 20px; color: #333; }
@@ -61,11 +60,6 @@
 </div>
 
 <script>
- const client = window.supabase.createClient(
-    'https://iwwyyrzlguylckyumgas.supabase.co',
-    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml3d3l5cnpsZ3V5Y2xreXVtZ2FzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkwMDE0MjksImV4cCI6MjEwNDU3NzQyOX0.seMdsWTPv79RvToPN5_D3rt33D9qsgwF2EUFvhBrcH8'
-  );
-
   const ACCESS_KEY = "888888";
 
   function login() {
@@ -81,8 +75,8 @@
   }
 
   async function loadCourses() {
-    const { data, error } = await client.from('courses').select('*').order('id', { ascending: true });
-    if (error) { alert('课程读取失败'); return; }
+    const res = await fetch('/api/data?table=courses');
+    const data = await res.json();
     const container = document.getElementById('courseList');
     container.innerHTML = '';
     data.forEach(item => {
@@ -102,7 +96,10 @@
     const name = document.getElementById(`c_name_${id}`).value;
     const price = document.getElementById(`c_price_${id}`).value;
     const duration = document.getElementById(`c_duration_${id}`).value;
-    await client.from('courses').update({ name, price, duration }).eq('id', id);
+    await fetch('/api/data', {
+      method: 'POST',
+      body: JSON.stringify({ action: 'update', table: 'courses', id, payload: { name, price, duration } })
+    });
     alert('课程修改成功！');
   }
 
@@ -111,7 +108,10 @@
     const price = document.getElementById('newCoursePrice').value;
     const duration = document.getElementById('newCourseDuration').value;
     if (!name || !price) { alert('请填写课程名称和价格'); return; }
-    await client.from('courses').insert([{ name, price, duration }]);
+    await fetch('/api/data', {
+      method: 'POST',
+      body: JSON.stringify({ action: 'insert', table: 'courses', payload: [{ name, price, duration }] })
+    });
     document.getElementById('newCourseName').value = '';
     document.getElementById('newCoursePrice').value = '';
     document.getElementById('newCourseDuration').value = '';
@@ -120,17 +120,20 @@
 
   async function deleteCourse(id) {
     if (confirm('确认删除此课程吗？')) {
-      await client.from('courses').delete().eq('id', id);
+      await fetch('/api/data', {
+        method: 'POST',
+        body: JSON.stringify({ action: 'delete', table: 'courses', id })
+      });
       loadCourses();
     }
   }
 
   async function loadVideos() {
-    const { data, error } = await client.from('videos').select('*').order('id', { ascending: true });
-    if (error) { alert('视频读取失败'); return; }
+    const res = await fetch('/api/data?table=videos');
+    const data = await res.json();
     const container = document.getElementById('videoList');
     container.innerHTML = '';
-    if (data.length === 0) {
+    if (!data || data.length === 0) {
       container.innerHTML = '<div style="color: #999; padding: 8px;">暂无视频，可在下方添加</div>';
       return;
     }
@@ -149,7 +152,10 @@
   async function updateVideo(id) {
     const title = document.getElementById(`v_title_${id}`).value;
     const embed_url = document.getElementById(`v_url_${id}`).value;
-    await client.from('videos').update({ title, embed_url }).eq('id', id);
+    await fetch('/api/data', {
+      method: 'POST',
+      body: JSON.stringify({ action: 'update', table: 'videos', id, payload: { title, embed_url } })
+    });
     alert('视频修改成功！');
   }
 
@@ -157,7 +163,10 @@
     const title = document.getElementById('newVideoTitle').value;
     const embed_url = document.getElementById('newVideoUrl').value;
     if (!title || !embed_url) { alert('请填写视频标题和链接'); return; }
-    await client.from('videos').insert([{ title, embed_url }]);
+    await fetch('/api/data', {
+      method: 'POST',
+      body: JSON.stringify({ action: 'insert', table: 'videos', payload: [{ title, embed_url }] })
+    });
     document.getElementById('newVideoTitle').value = '';
     document.getElementById('newVideoUrl').value = '';
     loadVideos();
@@ -165,7 +174,10 @@
 
   async function deleteVideo(id) {
     if (confirm('确认删除此视频吗？')) {
-      await client.from('videos').delete().eq('id', id);
+      await fetch('/api/data', {
+        method: 'POST',
+        body: JSON.stringify({ action: 'delete', table: 'videos', id })
+      });
       loadVideos();
     }
   }
