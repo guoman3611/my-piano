@@ -35,7 +35,6 @@
     <a href="/" target="_blank" style="color: #1677ff; text-decoration: none;">打开官网前台 ↗</a>
   </div>
 
-  <!-- 课程与价格管理 -->
   <div class="card">
     <h2>课程与价格管理</h2>
     <div id="courseList">加载中...</div>
@@ -47,7 +46,6 @@
     </div>
   </div>
 
-  <!-- 教学视频管理 -->
   <div class="card">
     <h2>教学展示视频管理</h2>
     <div id="videoList">加载中...</div>
@@ -61,15 +59,6 @@
 
 <script>
   const ACCESS_KEY = "888888";
-  const SUPABASE_URL = "/supabase-proxy";
-  const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml3d3l5cnpsZ3V5Y2xreXVtZ2FzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkwMDE0MjksImV4cCI6MjEwNDU3NzQyOX0.seMdsWTPv79RvToPN5_D3rt33D9qsgwF2EUFvhBrcH8";
-
-  const reqHeaders = {
-    'apikey': SUPABASE_KEY,
-    'Authorization': 'Bearer ' + SUPABASE_KEY,
-    'Content-Type': 'application/json',
-    'Prefer': 'return=representation'
-  };
 
   function login() {
     const pwd = document.getElementById('adminPwd').value;
@@ -86,12 +75,10 @@
   async function loadCourses() {
     const container = document.getElementById('courseList');
     try {
-      const res = await fetch(`${SUPABASE_URL}/rest/v1/courses?select=*&order=id.asc`, {
-        headers: reqHeaders
-      });
+      const res = await fetch('/api/data?table=courses');
       const data = await res.json();
       container.innerHTML = '';
-      if (!data || data.length === 0) {
+      if (!Array.isArray(data) || data.length === 0) {
         container.innerHTML = '<div style="color: #999; padding: 8px;">暂无课程，可在下方添加</div>';
         return;
       }
@@ -115,10 +102,10 @@
     const name = document.getElementById(`c_name_${id}`).value;
     const price = document.getElementById(`c_price_${id}`).value;
     const duration = document.getElementById(`c_duration_${id}`).value;
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/courses?id=eq.${id}`, {
-      method: 'PATCH',
-      headers: reqHeaders,
-      body: JSON.stringify({ name, price, duration })
+    const res = await fetch('/api/data', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'update', table: 'courses', id, payload: { name, price, duration } })
     });
     if (res.ok) {
       alert('课程修改成功！');
@@ -133,10 +120,10 @@
     const duration = document.getElementById('newCourseDuration').value;
     if (!name || !price) { alert('请填写课程名称和价格'); return; }
     
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/courses`, {
+    const res = await fetch('/api/data', {
       method: 'POST',
-      headers: reqHeaders,
-      body: JSON.stringify([{ name, price, duration }])
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'insert', table: 'courses', payload: { name, price, duration } })
     });
     
     if (res.ok) {
@@ -151,9 +138,10 @@
 
   async function deleteCourse(id) {
     if (confirm('确认删除此课程吗？')) {
-      const res = await fetch(`${SUPABASE_URL}/rest/v1/courses?id=eq.${id}`, {
-        method: 'DELETE',
-        headers: reqHeaders
+      const res = await fetch('/api/data', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'delete', table: 'courses', id })
       });
       if (res.ok) {
         loadCourses();
@@ -166,12 +154,10 @@
   async function loadVideos() {
     const container = document.getElementById('videoList');
     try {
-      const res = await fetch(`${SUPABASE_URL}/rest/v1/videos?select=*&order=id.asc`, {
-        headers: reqHeaders
-      });
+      const res = await fetch('/api/data?table=videos');
       const data = await res.json();
       container.innerHTML = '';
-      if (!data || data.length === 0) {
+      if (!Array.isArray(data) || data.length === 0) {
         container.innerHTML = '<div style="color: #999; padding: 8px;">暂无视频，可在下方添加</div>';
         return;
       }
@@ -193,10 +179,10 @@
   async function updateVideo(id) {
     const title = document.getElementById(`v_title_${id}`).value;
     const embed_url = document.getElementById(`v_url_${id}`).value;
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/videos?id=eq.${id}`, {
-      method: 'PATCH',
-      headers: reqHeaders,
-      body: JSON.stringify({ title, embed_url })
+    const res = await fetch('/api/data', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'update', table: 'videos', id, payload: { title, embed_url } })
     });
     if (res.ok) {
       alert('视频修改成功！');
@@ -210,10 +196,10 @@
     const embed_url = document.getElementById('newVideoUrl').value;
     if (!title || !embed_url) { alert('请填写视频标题和链接'); return; }
 
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/videos`, {
+    const res = await fetch('/api/data', {
       method: 'POST',
-      headers: reqHeaders,
-      body: JSON.stringify([{ title, embed_url }])
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'insert', table: 'videos', payload: { title, embed_url } })
     });
 
     if (res.ok) {
@@ -227,9 +213,10 @@
 
   async function deleteVideo(id) {
     if (confirm('确认删除此视频吗？')) {
-      const res = await fetch(`${SUPABASE_URL}/rest/v1/videos?id=eq.${id}`, {
-        method: 'DELETE',
-        headers: reqHeaders
+      const res = await fetch('/api/data', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'delete', table: 'videos', id })
       });
       if (res.ok) {
         loadVideos();
