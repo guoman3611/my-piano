@@ -25,8 +25,41 @@ export async function GET(req: Request) {
   } catch (err: any) {
     return NextResponse.json({
       error: err.message,
-      cause: err.cause ? String(err.cause) : null,
-      code: err.cause?.code || null
+      cause: err.cause ? String(err.cause) : null
     }, { status: 500 });
+  }
+}
+
+export async function POST(req: Request) {
+  try {
+    const body = await req.json();
+    const { action, table, id, payload } = body;
+
+    let url = `${SUPABASE_URL}/rest/v1/${table}`;
+    let method = 'POST';
+
+    if (action === 'update') {
+      url += `?id=eq.${id}`;
+      method = 'PATCH';
+    } else if (action === 'delete') {
+      url += `?id=eq.${id}`;
+      method = 'DELETE';
+    }
+
+    const res = await fetch(url, {
+      method,
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Authorization': `Bearer ${SUPABASE_KEY}`,
+        'Content-Type': 'application/json',
+        'Prefer': 'return=representation'
+      },
+      body: payload ? JSON.stringify(payload) : undefined
+    });
+
+    const text = await res.text();
+    return new NextResponse(text, { status: res.status });
+  } catch (err: any) {
+    return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
