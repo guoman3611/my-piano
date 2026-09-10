@@ -110,7 +110,8 @@
     if (res.ok) {
       alert('课程修改成功！');
     } else {
-      alert('修改失败，请重试');
+      const err = await res.text();
+      alert('修改失败: ' + err);
     }
   }
 
@@ -132,7 +133,8 @@
       document.getElementById('newCourseDuration').value = '';
       loadCourses();
     } else {
-      alert('添加失败，请重试');
+      const err = await res.text();
+      alert('添加失败详情: ' + err);
     }
   }
 
@@ -146,7 +148,8 @@
       if (res.ok) {
         loadCourses();
       } else {
-        alert('删除失败，请重试');
+        const err = await res.text();
+        alert('删除失败: ' + err);
       }
     }
   }
@@ -187,7 +190,8 @@
     if (res.ok) {
       alert('视频修改成功！');
     } else {
-      alert('修改失败，请重试');
+      const err = await res.text();
+      alert('修改失败: ' + err);
     }
   }
 
@@ -207,7 +211,8 @@
       document.getElementById('newVideoUrl').value = '';
       loadVideos();
     } else {
-      alert('添加失败，请重试');
+      const err = await res.text();
+      alert('添加失败详情: ' + err);
     }
   }
 
@@ -221,7 +226,8 @@
       if (res.ok) {
         loadVideos();
       } else {
-        alert('删除失败，请重试');
+        const err = await res.text();
+        alert('删除失败: ' + err);
       }
     }
   }
