@@ -1,37 +1,34 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 
-const SUPABASE_URL = 'https://iwwyyrzlguylckyumgas.supabase.co';
+const TARGET_HOST = 'https://iwwyyrzlguylckyumgas.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml3d3l5cnpsZ3V5Y2xreXVtZ2FzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkwMDE0MjksImV4cCI6MjEwNDU3NzQyOX0.seMdsWTPv79RvToPN5_D3rt33D9qsgwF2EUFvhBrcH8';
-
-const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
-  auth: { persistSession: false }
-});
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const table = searchParams.get('table') || 'courses';
 
+  const targetUrl = `${TARGET_HOST}/rest/v1/${table}?select=*&order=id.asc`;
+
   try {
-    const { data, error } = await supabase
-      .from(table)
-      .select('*')
-      .order('id', { ascending: true });
-
-    if (error) {
-      return NextResponse.json({ sdk_error: error }, { status: 400 });
-    }
-
-    return NextResponse.json(data, {
+    const res = await fetch(targetUrl, {
+      method: 'GET',
       headers: {
-        'Cache-Control': 'no-store, max-age=0'
+        'apikey': SUPABASE_KEY,
+        'Authorization': `Bearer ${SUPABASE_KEY}`,
+      },
+      cache: 'no-store'
+    });
+
+    const bodyText = await res.text();
+    return new NextResponse(bodyText, {
+      status: res.status,
+      headers: {
+        'Content-Type': 'application/json',
+        'Cache-Control': 'no-store, no-cache, must-revalidate'
       }
     });
   } catch (err: any) {
-    return NextResponse.json({
-      crash_error: err.message,
-      stack: err.stack
-    }, { status: 500 });
+    return NextResponse.json({ proxy_error: err.message }, { status: 500 });
   }
 }
 
@@ -40,40 +37,34 @@ export async function POST(req: Request) {
     const body = await req.json();
     const { action, table, id, payload } = body;
 
-    let resData: any = null;
-    let resErr: any = null;
+    let targetUrl = `${TARGET_HOST}/rest/v1/${table}`;
+    let method = 'POST';
 
     if (action === 'update') {
-      const { data, error } = await supabase
-        .from(table)
-        .update(payload)
-        .eq('id', id)
-        .select();
-      resData = data;
-      resErr = error;
+      targetUrl += `?id=eq.${id}`;
+      method = 'PATCH';
     } else if (action === 'delete') {
-      const { data, error } = await supabase
-        .from(table)
-        .delete()
-        .eq('id', id);
-      resData = data;
-      resErr = error;
-    } else {
-      // 默认新增
-      const { data, error } = await supabase
-        .from(table)
-        .insert([payload])
-        .select();
-      resData = data;
-      resErr = error;
+      targetUrl += `?id=eq.${id}`;
+      method = 'DELETE';
     }
 
-    if (resErr) {
-      return NextResponse.json({ error: resErr }, { status: 400 });
-    }
+    const res = await fetch(targetUrl, {
+      method,
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Authorization': `Bearer ${SUPABASE_KEY}`,
+        'Content-Type': 'application/json',
+        'Prefer': 'return=representation'
+      },
+      body: payload ? JSON.stringify(payload) : undefined
+    });
 
-    return NextResponse.json(resData);
+    const bodyText = await res.text();
+    return new NextResponse(bodyText, {
+      status: res.status,
+      headers: { 'Content-Type': 'application/json' }
+    });
   } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return NextResponse.json({ proxy_error: err.message }, { status: 500 });
   }
 }
