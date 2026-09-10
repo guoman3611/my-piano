@@ -6,7 +6,6 @@ const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const table = searchParams.get('table') || 'courses';
-
   const targetUrl = `${TARGET_HOST}/rest/v1/${table}?select=*&order=id.asc`;
 
   try {
@@ -22,13 +21,10 @@ export async function GET(req: Request) {
     const bodyText = await res.text();
     return new NextResponse(bodyText, {
       status: res.status,
-      headers: {
-        'Content-Type': 'application/json',
-        'Cache-Control': 'no-store, no-cache, must-revalidate'
-      }
+      headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }
     });
   } catch (err: any) {
-    return NextResponse.json({ proxy_error: err.message }, { status: 500 });
+    return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
 
@@ -48,6 +44,9 @@ export async function POST(req: Request) {
       method = 'DELETE';
     }
 
+    // Supabase 插入数据要求是数组，如果传入的是单个对象则自动包裹
+    const postBody = (action === 'insert' && !Array.isArray(payload)) ? [payload] : payload;
+
     const res = await fetch(targetUrl, {
       method,
       headers: {
@@ -56,7 +55,7 @@ export async function POST(req: Request) {
         'Content-Type': 'application/json',
         'Prefer': 'return=representation'
       },
-      body: payload ? JSON.stringify(payload) : undefined
+      body: postBody !== undefined ? JSON.stringify(postBody) : undefined
     });
 
     const bodyText = await res.text();
@@ -65,6 +64,6 @@ export async function POST(req: Request) {
       headers: { 'Content-Type': 'application/json' }
     });
   } catch (err: any) {
-    return NextResponse.json({ proxy_error: err.message }, { status: 500 });
+    return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
