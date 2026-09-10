@@ -1,72 +1,94 @@
 import { NextResponse } from 'next/server';
+import https from 'https';
+import dns from 'dns';
 
-const SUPABASE_HOST = 'https://iwwyyrzlguylckyumgas.supabase.co';
+// 强制将 DNS 解析服务器指定为 Google (8.8.8.8) 和 Cloudflare (1.1.1.1)
+// 彻底解决 Vercel 容器默认 DNS 触发的 ENOTFOUND 故障
+dns.setServers(['8.8.8.8', '1.1.1.1', '8.8.4.4']);
 
-// 优先使用 service_role key 获得写入权限，如果未填则回退到 anon key
-const SERVICE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml3d3l5cnpsZ3V5Y2xreXVtZ2FzIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4OTAwMTQyOSwiZXhwIjoyMTA0NTc3NDI5fQ.BJgR1XjerznWzc9mEsF9_3jT9AsJJHlWVAtdmrJopj4';
+const SUPABASE_HOST = 'iwwyyrzlguylckyumgas.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml3d3l5cnpsZ3V5Y2xreXVtZ2FzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkwMDE0MjksImV4cCI6MjEwNDU3NzQyOX0.seMdsWTPv79RvToPN5_D3rt33D9qsgwF2EUFvhBrcH8';
+
+function requestSupabase(path: string, method: string = 'GET', bodyData?: any): Promise<{ status: number, data: any }> {
+  return new Promise((resolve, reject) => {
+    let payload = '';
+    if (bodyData !== undefined) {
+      // 保证插入数据符合 Supabase 数组规范
+      const finalData = (method === 'POST' && !Array.isArray(bodyData)) ? [bodyData] : bodyData;
+      payload = JSON.stringify(finalData);
+    }
+
+    const options: https.RequestOptions = {
+      hostname: SUPABASE_HOST,
+      port: 443,
+      path: path,
+      method: method,
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Authorization': `Bearer ${SUPABASE_KEY}`,
+        'Content-Type': 'application/json',
+        'Prefer': 'return=representation',
+        ...(payload ? { 'Content-Length': Buffer.byteLength(payload) } : {})
+      }
+    };
+
+    const req = https.request(options, (res) => {
+      let chunks = '';
+      res.on('data', (chunk) => { chunks += chunk; });
+      res.on('end', () => {
+        try {
+          resolve({ status: res.statusCode || 200, data: JSON.parse(chunks) });
+        } catch {
+          resolve({ status: res.statusCode || 200, data: chunks });
+        }
+      });
+    });
+
+    req.on('error', (err) => {
+      reject(err);
+    });
+
+    if (payload) {
+      req.write(payload);
+    }
+    req.end();
+  });
+}
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const table = searchParams.get('table') || 'courses';
 
   try {
-    const res = await fetch(`${SUPABASE_HOST}/rest/v1/${table}?select=*&order=id.asc`, {
-      method: 'GET',
-      headers: {
-        'apikey': SERVICE_KEY,
-        'Authorization': `Bearer ${SERVICE_KEY}`,
-      },
-      cache: 'no-store'
+    const result = await requestSupabase(`/rest/v1/${table}?select=*&order=id.asc`, 'GET');
+    return NextResponse.json(result.data, {
+      status: result.status,
+      headers: { 'Cache-Control': 'no-store, no-cache, must-revalidate' }
     });
-    const data = await res.json();
-    return NextResponse.json(data, { status: res.status });
   } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return NextResponse.json({ error: err.message, code: err.code }, { status: 500 });
   }
 }
 
 export async function POST(req: Request) {
   try {
-    const { action, table, id, payload } = await req.json();
+    const body = await req.json();
+    const { action, table, id, payload } = body;
 
-    let url = `${SUPABASE_HOST}/rest/v1/${table}`;
+    let path = `/rest/v1/${table}`;
     let method = 'POST';
 
     if (action === 'update') {
-      url += `?id=eq.${id}`;
+      path += `?id=eq.${id}`;
       method = 'PATCH';
     } else if (action === 'delete') {
-      url += `?id=eq.${id}`;
+      path += `?id=eq.${id}`;
       method = 'DELETE';
     }
 
-    const headers: Record<string, string> = {
-      'apikey': SERVICE_KEY,
-      'Authorization': `Bearer ${SERVICE_KEY}`,
-      'Content-Type': 'application/json',
-      'Prefer': 'return=representation'
-    };
-
-    const res = await fetch(url, {
-      method,
-      headers,
-      body: payload ? JSON.stringify(payload) : undefined
-    });
-
-    const text = await res.text();
-    let jsonResult;
-    try {
-      jsonResult = JSON.parse(text);
-    } catch {
-      jsonResult = { message: text };
-    }
-
-    if (!res.ok) {
-      return NextResponse.json({ detail: jsonResult, status: res.status }, { status: res.status });
-    }
-
-    return NextResponse.json(jsonResult);
+    const result = await requestSupabase(path, method, payload);
+    return NextResponse.json(result.data, { status: result.status });
   } catch (err: any) {
-    return NextResponse.json({ error: err.message, cause: err.cause ? String(err.cause) : null }, { status: 500 });
+    return NextResponse.json({ error: err.message, code: err.code }, { status: 500 });
   }
 }
