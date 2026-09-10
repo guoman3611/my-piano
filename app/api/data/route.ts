@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 
-// 启用 Edge Runtime，使用边缘网络栈，彻底避开 Node.js DNS 解析故障
 export const runtime = 'edge';
 
 const SUPABASE_URL = 'https://iwwyyrzlguylckyumgas.supabase.co';
@@ -16,6 +15,8 @@ export async function GET(req: Request) {
       headers: {
         'apikey': SUPABASE_KEY,
         'Authorization': `Bearer ${SUPABASE_KEY}`,
+        'Content-Type': 'application/json',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'
       },
       cache: 'no-store'
     });
@@ -23,10 +24,13 @@ export async function GET(req: Request) {
     const data = await res.text();
     return new NextResponse(data, {
       status: res.status,
-      headers: { 'Content-Type': 'application/json' }
+      headers: { 
+        'Content-Type': 'application/json',
+        'Cache-Control': 'no-store, max-age=0'
+      }
     });
   } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return NextResponse.json({ error: err.message || 'fetch_failed' }, { status: 500 });
   }
 }
 
@@ -52,7 +56,8 @@ export async function POST(req: Request) {
         'apikey': SUPABASE_KEY,
         'Authorization': `Bearer ${SUPABASE_KEY}`,
         'Content-Type': 'application/json',
-        'Prefer': 'return=representation'
+        'Prefer': 'return=representation',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'
       },
       body: payload ? JSON.stringify(payload) : undefined
     });
