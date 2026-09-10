@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server';
 
-// 强制用正则剔除字符串里的所有空格、换行和隐形字符
-const RAW_URL = 'https://iwwyyrzlguylckyumgas.supabase.co';
-const SUPABASE_URL = RAW_URL.replace(/\s+/g, '');
+// 字符数组硬拼装，彻底避开一切隐形不可见字符
+const PROJECT_ID = ['i','w','w','y','y','r','z','l','g','u','y','l','c','k','y','u','m','g','a','s'].join('');
+const SUPABASE_HOST = `${PROJECT_ID}.supabase.co`;
+const SUPABASE_URL = `https://${SUPABASE_HOST}`;
 
-const RAW_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml3d3l5cnpsZ3V5Y2xreXVtZ2FzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkwMDE0MjksImV4cCI6MjEwNDU3NzQyOX0.seMdsWTPv79RvToPN5_D3rt33D9qsgwF2EUFvhBrcH8';
-const SUPABASE_KEY = RAW_KEY.replace(/\s+/g, '');
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml3d3l5cnpsZ3V5Y2xreXVtZ2FzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkwMDE0MjksImV4cCI6MjEwNDU3NzQyOX0.seMdsWTPv79RvToPN5_D3rt33D9qsgwF2EUFvhBrcH8'.replace(/[\s\u00A0\u3000]/g, '');
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
@@ -33,8 +33,8 @@ export async function GET(req: Request) {
     });
   } catch (err: any) {
     return NextResponse.json({
-      version: 'v2-no-space',
-      targetUrl: targetUrl,
+      version: 'v3-clean-join',
+      targetUrl,
       error: err.message,
       cause: err.cause ? String(err.cause) : null
     }, { status: 500 });
